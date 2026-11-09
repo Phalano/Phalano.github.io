@@ -1,0 +1,62 @@
+:root{
+  --bg:#e8ebe2; --panel:#f5f6f1; --ink:#2a2420; --mute:#6f6a60;
+  --line:#b9bdb0; --accent:#b4531f; --spore:#8a3b62;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#1a1417; --panel:#251c20; --ink:#eadfcd; --mute:#a0958a;
+    --line:#4a3a40; --accent:#e8a24f; --spore:#d98aa8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#1a1417; --panel:#251c20; --ink:#eadfcd; --mute:#a0958a;
+  --line:#4a3a40; --accent:#e8a24f; --spore:#d98aa8;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,sans-serif;min-height:100vh}
+header{display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center;justify-content:space-between;padding:1.25rem clamp(1rem,4vw,2.5rem)}
+h1{font:700 1.6rem/1 Fraunces,Georgia,serif;margin:0}
+.stats{display:flex;gap:1.75rem;flex-wrap:wrap}
+.stat b{display:block;font:700 1.5rem/1.1 Fraunces,Georgia,serif;color:var(--spore)}
+.stat span{color:var(--mute);font-size:.85rem}
+main{padding:0 clamp(1rem,4vw,2.5rem) 2rem}
+.gather{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+#gather{font:700 1.1rem Fraunces,Georgia,serif;background:var(--spore);color:var(--bg);border:0;border-radius:999px;padding:.9rem 2rem;cursor:pointer;transition:transform .08s}
+#gather:active{transform:scale(.95)}
+#msg{color:var(--mute);font-size:.9rem;min-height:1.4em}
+.tree-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.5rem}
+#tree{position:relative;width:1230px;height:870px;margin:0 auto}
+#links{position:absolute;inset:0;width:100%;height:100%}
+#links line{stroke:var(--line);stroke-width:2;stroke-linecap:round}
+#links line.on{stroke:var(--accent);stroke-width:3}
+.node{position:absolute;width:140px;min-height:92px;padding:.6rem .7rem;text-align:left;font:inherit;color:var(--ink);
+  background:var(--bg);border:2px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s,opacity .2s}
+.node b{display:block;font:700 .95rem/1.2 Fraunces,Georgia,serif}
+.node small{display:block;color:var(--mute);font-size:.76rem;line-height:1.3;margin:.2rem 0}
+.node .cost{font-weight:600;font-size:.82rem;color:var(--spore)}
+.node.locked{opacity:.38;border-style:dashed;cursor:not-allowed}
+.node.available{border-color:var(--spore)}
+.node.available.afford{background:var(--panel);box-shadow:0 0 0 3px color-mix(in srgb,var(--spore) 30%,transparent)}
+.node.owned{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--bg));cursor:default}
+.node.owned .cost{color:var(--accent)}
+.node:focus-visible,#gather:focus-visible,.ghost:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ghost{background:none;border:1px solid var(--line);color:var(--mute);border-radius:8px;padding:.4rem .8rem;font:inherit;font-size:.85rem;cursor:pointer}
+footer{display:flex;gap:.75rem;margin-top:1rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* À coller à la fin de votre style.css */
+.node.blocked{opacity:.2;border-style:dotted;filter:grayscale(1)}
+
+#casino{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem}
+#casino[hidden],#roulette-ui[hidden]{display:none}
+#casino h2{font:700 1.2rem Fraunces,Georgia,serif;margin:0 0 .75rem}
+#casino input{width:6.5rem;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.35rem .5rem}
+#casino .bet-row,#casino .games,#roulette-ui{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+#casino .games{margin-top:.75rem}
+#casino .games button{font:600 .95rem Figtree,system-ui,sans-serif;background:var(--spore);color:var(--bg);border:0;border-radius:999px;padding:.6rem 1.2rem;cursor:pointer}
+#casino-msg{min-height:1.4em;margin:.75rem 0 0;color:var(--mute)}
