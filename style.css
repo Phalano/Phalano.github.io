@@ -1,7 +1,7 @@
 /* ==========================================================================
    STYLE.CSS
    Sommaire : 1. Couleurs  2. Base  3. En-tête  4. Bouton principal
-              5. Arbre  6. Compétences  7. Casino  8. Pied de page
+              5. Arbre  6. Compétences  7. Casino  8. Mécaniques  9. Pied de page
    ========================================================================== */
 
 
@@ -108,14 +108,21 @@ h1 { margin: 0; font: 700 1.6rem/1 Fraunces, Georgia, serif; }
 }
 
 #gather {
+  --charge: 0;   /* 0 → 1 pendant le maintien (clic chargé), piloté par script.js */
+  min-width: 15rem;
   padding: .9rem 2rem;
-  background: var(--spore);
+  background: linear-gradient(90deg,
+    var(--accent) calc(var(--charge) * 100%),
+    var(--spore) calc(var(--charge) * 100%));
   color: var(--bg);
   border: 0;
   border-radius: 999px;
   font: 700 1.1rem Fraunces, Georgia, serif;
   cursor: pointer;
   transition: transform .08s;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 #gather:active { transform: scale(.95); }
 
@@ -231,10 +238,34 @@ h1 { margin: 0; font: 700 1.6rem/1 Fraunces, Georgia, serif; }
 #casino-msg { min-height: 1.4em; margin: .75rem 0 0; color: var(--mute); }
 
 
-/* ===== 8. Pied de page ================================================== */
+/* ===== 8. Mécaniques ===================================================== */
+
+#boost-status { color: var(--accent); font-size: .9rem; font-weight: 600; }
+
+/* Icône bonus de la voie Production : position aléatoire (fixée par script.js) */
+.bonus-icon {
+  position: fixed;
+  z-index: 20;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: var(--panel);
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  animation: bonus-pulse 1.2s ease-in-out infinite;
+}
+.bonus-icon:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@keyframes bonus-pulse { 50% { transform: scale(1.15); } }
+
+
+/* ===== 9. Pied de page ================================================== */
 
 footer { display: flex; gap: .75rem; margin-top: 1rem; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .bonus-icon { animation: none; }
 }
