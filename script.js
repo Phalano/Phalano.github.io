@@ -11,10 +11,10 @@
      5. Règles de l’arbre
      6. Achat
      7. Casino
-     8. Affichage
-     9. Boucle de jeu
-    10. Sauvegarde
-    11. Démarrage
+     8. Mécaniques débloquables (clic chargé, bonus)
+     9. Affichage
+    10. Boucle de jeu
+    11. Sauvegarde, boutons et démarrage
    ========================================================================== */
 
 
@@ -26,7 +26,7 @@ const CONFIRM_DELAY_MS = 3000;          // délai pour confirmer un choix de voi
 const MAX_WIN_CHANCE = 0.95;            // les chances de gain ne dépassent jamais 95 %
 const MAX_BET_RATIO = 1 / 20;           // mise maximale = 1/20 des unités possédées
 const TICK_MS = 100;                    // fréquence de la boucle de jeu
-const AUTOSAVE_MS = 5000;
+const AUTOSAVE_MS = 5000;               // sauvegarde automatique toutes les 5 s
 
 // Dimensions de la grille de l’arbre (en pixels)
 const LAYOUT = { cellX: 170, cellY: 125, nodeW: 150, nodeH: 110, pad: 15 };
@@ -97,8 +97,8 @@ function validateSkills() {
     for (const stat of Object.keys(skill.fx)) {
       if (!STATS[stat]) console.error(`${where} : effet inconnu "${stat}" (voir STATS)`);
     }
-    for (const game of skill.unlocks) {
-      if (!GAMES[game]) console.error(`${where} : jeu inconnu "${game}" (voir GAMES)`);
+    for (const key of skill.unlocks) {
+      if (!GAMES[key] && !FEATURES[key]) console.error(`${where} : "${key}" n’est ni un jeu (GAMES) ni une mécanique (FEATURES)`);
     }
   }
 }
@@ -121,7 +121,7 @@ function computeStats() {
 
   // Valeurs finales utilisées par le jeu
   stats.perClick = stats.clickAdd * stats.clickMul * stats.allMul;
-  stats.perSecond = stats.secAdd * stats.secMul * stats.allMul;
+  stats.perSecond = stats.secAdd * stats.secMul * stats.allMul * boostMultiplier();
   return stats;
 }
 
@@ -139,8 +139,9 @@ const isAvailable = (skill) =>
 
 const canAfford = (skill) => state.unites >= skill.cost;
 
-const isGameUnlocked = (gameKey) =>
-  SKILLS.some((skill) => isOwned(skill) && skill.unlocks.includes(gameKey));
+// Vrai si une compétence achetée a débloqué ce jeu ou cette mécanique
+const isUnlocked = (key) =>
+  SKILLS.some((skill) => isOwned(skill) && skill.unlocks.includes(key));
 
 
 /* ===== 6. Achat ========================================================== */
@@ -167,13 +168,14 @@ function buySkill(id) {
 
   state.unites -= skill.cost;
   state.owned[id] = true;
+
+  // Annonce les mécaniques que cette compétence vient de débloquer
+  for (const key of skill.unlocks) {
+    const message = FEATURES[key]?.message;
+    if (message) $('msg').textContent = message;
+  }
   render();
   save();
-}
-
-function gatherUnits() {
-  state.unites += computeStats().perClick;
-  render();
 }
 
 
@@ -196,7 +198,14 @@ function winChance(gameKey, optionKey) {
 // Mise maximale : 1/20 des unités possédées (au moins 1 si on a de quoi miser)
 function maxBet() {
   const { limit } = computeStats();
-  return Math.max(1, (Math.floor(state.unites) * (MAX_BET_RATIO * (1 * limit))));
+  const ceiling = Math.floor(state.unites * MAX_BET_RATIO * limit);
+  return Math.max(1, Math.min(ceiling, Math.floor(state.unites)));
+}
+
+// Part des unités que l’on peut miser, en texte (ex. « 5 % »), selon les bonus
+function maxBetPercent() {
+  const { limit } = computeStats();
+  return `${Math.round(MAX_BET_RATIO * limit * 100)} %`;
 }
 
 // Construit le panneau du casino à partir de GAMES
@@ -263,7 +272,7 @@ function playGame(gameKey, optionKey) {
     return;
   }
   if (bet > maxBet()) {
-    message.textContent = `Mise trop élevée : le maximum est de ${formatNumber(maxBet())} unités (1/20 de vos unités).`;
+    message.textContent = `Mise trop élevée : le maximum est de ${formatNumber(maxBet())} unités (${maxBetPercent()} de vos unités).`;
     return;
   }
 
@@ -282,7 +291,178 @@ function playGame(gameKey, optionKey) {
 }
 
 
-/* ===== 8. Affichage ====================================================== */
+/* ===== 8. Mécaniques débloquables ======================================== */
+
+// Affiche un multiplicateur sans décimales inutiles (×5 ou ×3,4)
+const formatMultiplier = (value) => `×${formatNumber(Math.round(value * 10) / 10)}`;
+
+// ---- 8a. Clic chargé : maintenir le bouton multiplie le gain du clic ----
+
+let holdStartedAt = null;   // instant où le bouton a été enfoncé (null = pas de maintien)
+let holdFrame = null;       // animation en cours pendant le maintien
+let gatherLabel = '';       // texte normal du bouton principal
+
+const heldSeconds = () =>
+  holdStartedAt === null ? 0 : (performance.now() - holdStartedAt) / 1000;
+
+// Multiplicateur obtenu après `seconds` secondes de maintien
+function chargeMultiplier(seconds) {
+  if (!isUnlocked('charge')) return 1;
+  const { minSeconds, fullSeconds, fullMultiplier } = FEATURES.charge;
+  if (seconds <= minSeconds) return 1;
+  const progress = Math.min((seconds - minSeconds) / (fullSeconds - minSeconds), 1);
+  return 1 + progress * (fullMultiplier - 1);
+}
+
+function showGatherButton(charge, label) {
+  const button = $('gather');
+  button.style.setProperty('--charge', charge);   // remplissage du bouton (CSS)
+  button.textContent = label;
+}
+
+// Met à jour le bouton à chaque image tant qu’il est maintenu
+function animateHold() {
+  if (holdStartedAt === null) return;
+  if (isUnlocked('charge')) {
+    const seconds = heldSeconds();
+    const progress = Math.min(seconds / FEATURES.charge.fullSeconds, 1);
+    showGatherButton(progress, `Chargement… ${formatMultiplier(chargeMultiplier(seconds))}`);
+  }
+  holdFrame = requestAnimationFrame(animateHold);
+}
+
+function startHold() {
+  if (holdStartedAt !== null) return;
+  holdStartedAt = performance.now();
+  animateHold();
+}
+
+// Relâchement : on génère le clic, multiplié selon la durée (cancelled = geste annulé)
+function endHold(cancelled) {
+  if (holdStartedAt === null) return;
+  const multiplier = cancelled ? 1 : chargeMultiplier(heldSeconds());
+  holdStartedAt = null;
+  cancelAnimationFrame(holdFrame);
+  showGatherButton(0, gatherLabel);
+  if (cancelled) return;
+
+  const gain = computeStats().perClick * multiplier;
+  state.unites += gain;
+  if (multiplier > 1) {
+    $('msg').textContent = `Clic chargé ${formatMultiplier(multiplier)} : +${formatNumber(gain)} unités.`;
+  }
+  render();
+}
+
+// Souris, écran tactile et clavier (Espace / Entrée) passent par le même mécanisme
+function setupGatherButton() {
+  const button = $('gather');
+  gatherLabel = button.textContent;
+
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button > 0) return;                     // seul le clic gauche compte
+    try { button.setPointerCapture(event.pointerId); } catch (error) { /* non supporté */ }
+    startHold();
+  });
+  button.addEventListener('pointerup', () => endHold(false));
+  button.addEventListener('pointercancel', () => endHold(true));
+  button.addEventListener('contextmenu', (event) => event.preventDefault());
+
+  button.addEventListener('keydown', (event) => {
+    if (event.key !== ' ' && event.key !== 'Enter') return;
+    event.preventDefault();
+    if (!event.repeat) startHold();
+  });
+  button.addEventListener('keyup', (event) => {
+    if (event.key !== ' ' && event.key !== 'Enter') return;
+    event.preventDefault();
+    endHold(false);
+  });
+  button.addEventListener('blur', () => endHold(true));
+}
+
+
+// ---- 8b. Bonus aléatoire : une icône apparaît, la cliquer lance un effet ----
+
+let boost = null;           // effet en cours : { multiplier, endsAt }
+let nextBonusAt = null;     // prochaine apparition de l’icône (null = mécanique inactive)
+let bonusIcon = null;       // icône actuellement affichée
+let bonusIconTimer;
+
+// Multiplicateur de production du bonus en cours (×1 s’il n’y en a pas)
+function boostMultiplier() {
+  return boost && Date.now() < boost.endsAt ? boost.multiplier : 1;
+}
+
+// Choisit un effet au hasard (selon `weight`, 1 par défaut)
+function pickBonusEffect() {
+  const { effects } = FEATURES.boost;
+  const total = effects.reduce((sum, effect) => sum + (effect.weight ?? 1), 0);
+  let roll = Math.random() * total;
+  for (const effect of effects) {
+    roll -= effect.weight ?? 1;
+    if (roll < 0) return effect;
+  }
+  return effects[effects.length - 1];
+}
+
+function removeBonusIcon() {
+  clearTimeout(bonusIconTimer);
+  if (bonusIcon) bonusIcon.remove();
+  bonusIcon = null;
+}
+
+function spawnBonusIcon() {
+  removeBonusIcon();
+  const icon = document.createElement('button');
+  icon.type = 'button';
+  icon.className = 'bonus-icon';
+  icon.textContent = FEATURES.boost.icon;
+  icon.setAttribute('aria-label', 'Bonus : cliquez pour lancer un effet aléatoire');
+  icon.style.left = `${5 + Math.random() * 85}%`;   // position aléatoire dans la fenêtre
+  icon.style.top = `${15 + Math.random() * 70}%`;
+  icon.onclick = collectBonus;
+  document.body.appendChild(icon);
+
+  bonusIcon = icon;
+  bonusIconTimer = setTimeout(removeBonusIcon, FEATURES.boost.iconLifetimeSeconds * 1000);
+}
+
+function collectBonus() {
+  const effect = pickBonusEffect();
+  boost = { multiplier: effect.multiplier, endsAt: Date.now() + effect.seconds * 1000 };
+  removeBonusIcon();
+  $('msg').textContent = `Bonus ! Production ×${effect.multiplier} pendant ${effect.seconds} s.`;
+  render();
+}
+
+// Appelée à chaque tour de boucle : programme et déclenche les apparitions
+function updateBonusSpawner() {
+  if (boost && Date.now() >= boost.endsAt) boost = null;
+
+  if (!isUnlocked('boost')) {
+    nextBonusAt = null;
+    return;
+  }
+  const delay = FEATURES.boost.spawnEverySeconds * 1000;
+  const now = Date.now();
+  if (nextBonusAt === null) {
+    nextBonusAt = now + delay;
+  } else if (now >= nextBonusAt) {
+    spawnBonusIcon();
+    nextBonusAt = now + delay;
+  }
+}
+
+function resetMechanics() {
+  endHold(true);
+  boost = null;
+  nextBonusAt = null;
+  removeBonusIcon();
+}
+
+
+/* ===== 9. Affichage ====================================================== */
 
 // Création des éléments, une seule fois au démarrage
 function buildTree() {
@@ -362,15 +542,15 @@ function renderSkills() {
 }
 
 function renderCasino() {
-  const anyGameUnlocked = Object.keys(GAMES).some(isGameUnlocked);
+  const anyGameUnlocked = Object.keys(GAMES).some(isUnlocked);
   $('casino').hidden = !anyGameUnlocked;
 
   const limit = maxBet();
   $('bet').max = limit;
-  $('bet-limit').textContent = `Max : ${formatNumber(limit)} (1/20 de vos unités)`;
+  $('bet-limit').textContent = `Max : ${formatNumber(limit)} (${maxBetPercent()} de vos unités)`;
 
   for (const [gameKey, game] of Object.entries(GAMES)) {
-    $(`game-${gameKey}`).hidden = !isGameUnlocked(gameKey);
+    $(`game-${gameKey}`).hidden = !isUnlocked(gameKey);
     for (const option of getOptions(game)) {
       const percent = winChance(gameKey, option.key) * 100;
       const shown = (percent >= 10 ? percent.toFixed(0) : percent.toFixed(1)).replace('.', ',');
@@ -379,14 +559,29 @@ function renderCasino() {
   }
 }
 
+function renderMechanics() {
+  // Indication au survol quand le clic chargé est débloqué
+  $('gather').title = isUnlocked('charge') ? 'Maintenez pour charger le clic' : '';
+
+  // Compte à rebours du bonus de production en cours
+  const status = $('boost-status');
+  const active = boostMultiplier() > 1;
+  status.hidden = !active;
+  if (active) {
+    const secondsLeft = Math.ceil((boost.endsAt - Date.now()) / 1000);
+    status.textContent = `${FEATURES.boost.icon} Production ${formatMultiplier(boost.multiplier)} · ${secondsLeft} s`;
+  }
+}
+
 function render() {
   renderHeader(computeStats());
   renderSkills();
   renderCasino();
+  renderMechanics();
 }
 
 
-/* ===== 9. Boucle de jeu ================================================== */
+/* ===== 10. Boucle de jeu ================================================= */
 
 function startGameLoop() {
   let lastTick = performance.now();
@@ -394,16 +589,20 @@ function startGameLoop() {
     const now = performance.now();
     const elapsedSeconds = (now - lastTick) / 1000;
     lastTick = now;
+    updateBonusSpawner();
     state.unites += computeStats().perSecond * elapsedSeconds;
     render();
   }, TICK_MS);
 
   setInterval(save, AUTOSAVE_MS);
+  window.addEventListener('pagehide', save);   // dernière sauvegarde à la fermeture
 }
 
 
-/* ===== 10. Sauvegarde ==================================================== */
+/* ===== 11. Sauvegarde, boutons et démarrage =============================== */
 
+// La partie (unités, compétences, voie choisie) est enregistrée dans le navigateur.
+// Les effets temporaires (bonus en cours, icône) ne sont pas sauvegardés.
 function save() {
   try {
     state.saved = Date.now();
@@ -435,12 +634,18 @@ function load() {
 }
 
 function setupButtons() {
-  $('gather').onclick = gatherUnits;
+  setupGatherButton();
 
   $('save').onclick = () => {
     save();
     $('msg').textContent = 'Partie sauvegardée.';
   };
+
+  // Indicateur du bonus de production, placé à côté du message
+  const status = document.createElement('span');
+  status.id = 'boost-status';
+  status.hidden = true;
+  $('msg').before(status);
 
   // Réinitialisation en deux clics (évite les clics accidentels)
   let resetArmed = false;
@@ -453,15 +658,13 @@ function setupButtons() {
     }
     resetArmed = false;
     state = newGameState();
+    resetMechanics();
     $('reset').textContent = 'Réinitialiser';
     $('msg').textContent = 'Partie réinitialisée.';
     save();
     render();
   };
 }
-
-
-/* ===== 11. Démarrage ===================================================== */
 
 prepareSkills();
 validateSkills();
