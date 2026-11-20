@@ -190,6 +190,51 @@ function findOption(gameKey, optionKey) {
   return getOptions(GAMES[gameKey]).find((option) => option.key === optionKey);
 }
 
+// ---- QTE : appuyer sur une touche avant la fin du délai ----
+let qteActive = false;
+const QTE_IGNORED_KEYS = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'];
+
+// Appelle onResult(true) si la bonne touche est pressée à temps, onResult(false) sinon
+function startQTE(requiredKey, durationMs, onResult) {
+  if (qteActive) return;
+  qteActive = true;
+
+  const fill = $('qte-fill');
+  $('qte-key').textContent = requiredKey.toUpperCase();
+  $('qte').hidden = false;
+  $('side-action').disabled = true;
+
+  function onKeyDown(event) {
+    if (event.repeat || QTE_IGNORED_KEYS.includes(event.key)) return;
+    event.preventDefault();   // évite d’écrire la lettre dans le champ de mise
+    finish(event.key.toLowerCase() === requiredKey.toLowerCase());
+  }
+
+  function finish(success) {
+    if (!qteActive) return;
+    qteActive = false;
+    window.removeEventListener('keydown', onKeyDown);
+    clearTimeout(listenTimer);
+    clearTimeout(timeout);
+    $('qte').hidden = true;
+    $('side-action').disabled = false;
+    onResult(success);
+  }
+
+  // Écouteur ajouté au tour suivant : sinon la touche Entrée qui a cliqué sur le bouton
+  // serait comptée comme une mauvaise touche.
+  const listenTimer = setTimeout(() => window.addEventListener('keydown', onKeyDown), 0);
+  const timeout = setTimeout(() => finish(false), durationMs);
+}
+
+// Action du bouton de la sous-section de droite
+function onSideAction() {
+  if(startQTE("e", 300, success)){
+    return 1;
+  }
+  return 0;
+}
+
 function winChance(gameKey, optionKey) {
   const { luck } = computeStats();
   return Math.min(MAX_WIN_CHANCE, findOption(gameKey, optionKey).chance * (1 + luck));
@@ -215,11 +260,18 @@ function buildCasino() {
   panel.hidden = true;
   panel.innerHTML = `
     <h2>Casino</h2>
-    <div class="bet-row">
-      <label>Mise <input id="bet" type="number" min="1" step="1" value="10"></label>
-      <button type="button" class="ghost" id="bet-half">½</button>
-      <button type="button" class="ghost" id="bet-max">Max</button>
-      <span id="bet-limit"></span>
+    <div class="casino-top">
+      <div class="bet-row">
+        <label>Mise <input id="bet" type="number" min="1" step="1" value="10"></label>
+        <button type="button" class="ghost" id="bet-half">½</button>
+        <button type="button" class="ghost" id="bet-max">Max</button>
+        <span id="bet-limit"></span>
+      </div>
+      <h3>Sous-section</h3>
+      <button type="button" class="ghost" id="side-action">Bouton</button>
+      <div id="qte" class="qte" hidden>
+      <button type="button" id="qte-key" class="qte-key"></button>
+      <div class="qte-bar"><div id="qte-fill"></div></div>
     </div>
     <div class="games" id="games"></div>
     <p id="casino-msg" aria-live="polite"></p>`;
@@ -255,6 +307,7 @@ function buildCasino() {
 
   $('bet-half').onclick = () => { $('bet').value = Math.max(1, Math.floor(maxBet() / 2)); };
   $('bet-max').onclick = () => { $('bet').value = maxBet(); };
+  $('side-action').onclick = onSideAction;
 }
 
 function playGame(gameKey, optionKey) {
