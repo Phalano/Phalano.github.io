@@ -17,7 +17,7 @@
 
 const SAVE_KEY = 'save';
 const OFFLINE_MAX_SECONDS = 28800;
-const CONFIRM_DELAY_MS = 300;
+const CONFIRM_DELAY_MS = 3000;
 const MAX_WIN_CHANCE = 1;
 const MAX_BET_RATIO = 1/20;
 const TICK_MS = 100;
