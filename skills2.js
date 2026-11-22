@@ -44,12 +44,12 @@ const SKILLS = [
     cost: 0, at: [3, 0], parents: [] },
 
     // ------CLICK---------------------------
-    {   id: 'fil', branch: 'click', name: 'Poing',          desc: '+1 unité par clics.',
+    {   id: 'fil', branch: 'click', name: 'Poing',          desc: '+1 unité par click.',
         cost: 15,   at: [0, 0.5], parents: ['root'],              fx: {clickAdd: 1}},
-    {   id: 'pre', branch: 'click', name: 'Deuxieme poing', desc: '+5 unité par clicks.',
+    {   id: 'pre', branch: 'click', name: 'Deuxieme poing', desc: '+5 unités par click.',
         cost: 100,  at: [-0.5, 1], parents: ['fil'],          fx: {clickAdd: 5}},
     {   id: 'clu', branch: 'click', name: 'Super force',    desc: 'Clicks 2x',
-        cost: 400,  at: [0.5, 1],  parents: ['fil'],          fx: {clickMul: 2}},
+        cost: 200,  at: [0.5, 1],  parents: ['fil'],          fx: {clickMul: 2}},
     {   id: 'chg', branch: 'click', name: 'Click chargé',    desc: `Maintenir le bouton pour : x${FEATURES.charge.fullMultiplier} aprés ${FEATURES.charge.fullSeconds}s.`,
         cost: 2000, at: [0, 1.5],   parents: ['pre', 'clu'],   unlocks: ['charge']},
     {   id: 'hak', branch: 'click', name: 'Haki',            desc: 'Clicks 3x.',
