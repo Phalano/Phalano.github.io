@@ -45,7 +45,7 @@ const SKILLS = [
 
     // ------CLICK---------------------------
     {   id: 'fil', branch: 'click', name: 'Poing',          desc: '+1 unité par click.',
-        cost: 15,   at: [0, 0.5], parents: ['root'],              fx: {clickAdd: 1}},
+        cost: 15,   at: [0, 0.5], parents: ['root'],              fx: {clickAdd: 1000000}},
     {   id: 'pre', branch: 'click', name: 'Deuxieme poing', desc: '+5 unités par click.',
         cost: 100,  at: [-0.5, 1], parents: ['fil'],          fx: {clickAdd: 5}},
     {   id: 'clu', branch: 'click', name: 'Super force',    desc: 'Clicks 2x',
@@ -85,7 +85,7 @@ const SKILLS = [
 
     // -----PRODUCTION---------------------
     {   id: 'gen', branch: 'idle',   name: 'Génerateur',        desc: '+1 par seconde',
-        cost: 15,     at: [0, 0.5],  parents: ['root'],           fx: {secAdd: 1}},
+        cost: 15,     at: [0, 0.5],  parents: ['root'],           fx: {secAdd: 1000000}},
     {   id: 'ge2', branch: 'idle',   name: 'Générateurs en Chaine', desc: '+8 par seconde',
         cost: 100,    at: [-0.5, 1], parents: ['gen'],         fx: {secAdd: 8}},
     {   id: 'sch', branch: 'idle',   name: 'Surtension',        desc: 'Production 4x',
